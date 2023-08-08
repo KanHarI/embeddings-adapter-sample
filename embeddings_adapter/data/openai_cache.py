@@ -1,8 +1,9 @@
+import os
 import typing
 
 import openai
 
-openai.api_key = "YOUR_API_KEY"
+openai.api_key = os.environ.get("OPENAI_API_KEY", "YOUR_API_KEY")
 
 
 def get_embeddings(input: str) -> list[float]:
