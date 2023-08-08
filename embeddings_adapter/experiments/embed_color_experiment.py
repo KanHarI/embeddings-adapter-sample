@@ -25,17 +25,17 @@ EXPERIMENT_CONFIG = EmbedColorExperimentConfig(
     eval_interval=50,
     eval_iters=500,
     max_steps=10_000,
-    lr=2e-4,
+    lr=1e-4,
     momentum=0.9,
     _dtype="float32",
     n_layers=2,
     n_embed=1536,  # Same as OpenAI's ada-text-embeddings-002
-    dropout=0.5,
+    dropout=0.75,
     inference_alpha=0.5,
     linear_size_multiplier=4,
     _activation="new_gelu",
     device="cpu",
-    init_std=2e-3,
+    init_std=1e-3,
     ln_eps=1e-4,
     triplet_loss_bias=0.1,
     norm_loss_cost=0.01,
@@ -93,19 +93,30 @@ def main() -> int:
                 eval_losses = torch.zeros(
                     (config.eval_iters,), device="cpu", dtype=torch.float32
                 )
+                eval_triplet_losses = torch.zeros(
+                    (config.eval_iters,), device="cpu", dtype=torch.float32
+                )
+                eval_norm_losses = torch.zeros(
+                    (config.eval_iters,), device="cpu", dtype=torch.float32
+                )
                 for j in range(config.eval_iters):
                     batch = next(iter(test_loader))  # (B, 3, E)
                     batch = batch.to(embeddings_adapter_config.device)
                     result = model(batch)
-                    loss = (
-                        triplet_loss(result, config.triplet_loss_bias)
-                        + norm_loss(batch, result) * config.norm_loss_cost
+                    eval_triplet_loss = triplet_loss(
+                        result, config.triplet_loss_bias
                     )
+                    eval_norm_loss = norm_loss(batch, result) * config.norm_loss_cost
+                    loss = eval_triplet_loss + eval_norm_loss
                     eval_losses[j] = loss
+                    eval_triplet_losses[j] = eval_triplet_loss
+                    eval_norm_losses[j] = eval_norm_loss
                 if config.wandb_log:
                     wandb.log(
                         {
                             "eval_loss": eval_losses.mean(),
+                            "eval_triplet_loss": eval_triplet_losses.mean(),
+                            "eval_norm_loss": eval_norm_losses.mean(),
                             "training_loss": training_losses.mean(),
                             "lr": lr,
                         },

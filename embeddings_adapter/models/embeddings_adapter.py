@@ -45,7 +45,7 @@ class EmbeddingAdapter(torch.nn.Module):
         )
         self.final_ln = torch.nn.LayerNorm(config.n_embed, eps=config.ln_eps)
         self.final_amp = torch.nn.Parameter(
-            torch.zeros(1, dtype=config.dtype, device=config.device)
+            torch.zeros(1, dtype=config.dtype, device=config.device, requires_grad=True)
         )
 
     def init_weights(self) -> None:
