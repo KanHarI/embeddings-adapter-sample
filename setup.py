@@ -12,6 +12,7 @@ setup(
         "einops",
         "hydra-core",
         "numpy",
+        "openai[embeddings,wandb]",
         "torch",
         "torchaudio",
         "torchvision",
