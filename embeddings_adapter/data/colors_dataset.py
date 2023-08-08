@@ -3,7 +3,7 @@ import random
 import torch.utils.data
 
 from embeddings_adapter.data.colors_raw_data import ColorsDataset
-from embeddings_adapter.data.openai_cache import EmbeddingsCache, GLOBAL_EMBEDDINGS_CACHE
+from embeddings_adapter.data.openai_cache import GLOBAL_EMBEDDINGS_CACHE
 
 
 class ColorsDataloader(torch.utils.data.Dataset[torch.Tensor]):

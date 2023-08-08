@@ -19,27 +19,27 @@ from embeddings_adapter.models.triplet_loss import triplet_loss
 
 EXPERIMENT_CONFIG = EmbedColorExperimentConfig(
     wandb_log=True,
-    run_name="tiny-dataset",
+    run_name="tiny-dataset-alpha-0.5",
     batch_size=12,
     log_interval=5,
-    eval_interval=20,
-    eval_iters=100,
+    eval_interval=50,
+    eval_iters=500,
     max_steps=10_000,
-    lr=1e-3,
+    lr=2e-4,
     momentum=0.9,
     _dtype="float32",
     n_layers=2,
     n_embed=1536,  # Same as OpenAI's ada-text-embeddings-002
-    dropout=0.2,
-    inference_alpha=0.3,
+    dropout=0.5,
+    inference_alpha=0.5,
     linear_size_multiplier=4,
     _activation="new_gelu",
     device="cpu",
-    init_std=1e-2,
+    init_std=2e-3,
     ln_eps=1e-4,
     triplet_loss_bias=0.1,
     norm_loss_cost=0.01,
-    warmup_iters=100,
+    warmup_iters=1_000,
 )
 
 
@@ -85,6 +85,7 @@ def main() -> int:
     )
     training_losses += float("inf")  # First iteration has no loss
     lr = 0.0
+    best_eval_loss = float("inf")
     for step in range(config.max_steps):
         if step % config.eval_interval == 0:
             model.eval()
@@ -102,8 +103,23 @@ def main() -> int:
                     )
                     eval_losses[j] = loss
                 if config.wandb_log:
-                    wandb.log({"eval_loss": eval_losses.mean(), "training_loss": training_losses.mean(), "lr": lr}, step=step)
-                print(f"Step: {step}, eval loss: {eval_losses.mean()}, training loss: {training_losses.mean()}, lr: {lr}")
+                    wandb.log(
+                        {
+                            "eval_loss": eval_losses.mean(),
+                            "training_loss": training_losses.mean(),
+                            "lr": lr,
+                        },
+                        step=step,
+                    )
+                print(
+                    f"Step: {step}, eval loss: {eval_losses.mean()}, training loss: {training_losses.mean()}, lr: {lr}"
+                )
+                eval_loss = eval_losses.mean().item()
+                if eval_loss < best_eval_loss:
+                    best_eval_loss = eval_loss
+                    print("Saving model...")
+                    torch.save(model.state_dict(), "embeddings_adapter.pt")
+                    print("Saving embeddings cache...")
             # Save all embeddings to disk for cache
             GLOBAL_EMBEDDINGS_CACHE.save_to_json()
             model.train()
@@ -125,7 +141,7 @@ def main() -> int:
         optimizer.step()
         training_losses[step % config.eval_interval] = loss.item()
         if step % config.log_interval == 0:
-            print(f"Step: {step}, loss: {training_losses.mean()}")
+            print(f"Step: {step}, loss: {loss.item()}")
     return 0
 
 

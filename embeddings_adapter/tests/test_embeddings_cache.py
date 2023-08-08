@@ -1,4 +1,6 @@
-from embeddings_adapter.data.openai_cache import EmbeddingsCache, GLOBAL_EMBEDDINGS_CACHE
+from embeddings_adapter.data.openai_cache import (
+    GLOBAL_EMBEDDINGS_CACHE,
+)
 
 
 def test_embeddings_cache() -> None:

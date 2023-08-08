@@ -43,6 +43,10 @@ class EmbeddingAdapter(torch.nn.Module):
                 for _ in range(config.n_layers)
             ]
         )
+        self.final_ln = torch.nn.LayerNorm(config.n_embed, eps=config.ln_eps)
+        self.final_amp = torch.nn.Parameter(
+            torch.zeros(1, dtype=config.dtype, device=config.device)
+        )
 
     def init_weights(self) -> None:
         for mlp in self.mlps:
@@ -52,6 +56,8 @@ class EmbeddingAdapter(torch.nn.Module):
         original_x = x
         for i in range(self.config.n_layers):
             x = x + self.mlps[i](self.layer_norms[i](x))
+        x = self.final_ln(x)
+        x = x * torch.exp(self.final_amp)
         if self.training:
             return x
         else:
