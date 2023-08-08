@@ -1,174 +1,64 @@
-import dataclasses
+import random
+
+import torch.utils.data
+
+from embeddings_adapter.data.colors_raw_data import ColorsDataset
+from embeddings_adapter.data.openai_cache import EmbeddingsCache, GLOBAL_EMBEDDINGS_CACHE
 
 
-@dataclasses.dataclass
-class Category:
-    category_name: str
-    category_items: list[str]
+class ColorsDataloader(torch.utils.data.Dataset[torch.Tensor]):
+    def __init__(self, colors_dataset: ColorsDataset) -> None:
+        super().__init__()
+        self.colors_dataset = colors_dataset
+        self.embeddings_cache = GLOBAL_EMBEDDINGS_CACHE
+        self.embeddings_cache.load_from_json()
 
+    def __len__(self) -> int:
+        return 1_000_000_000  # A hack, read the torch documentation
 
-Dataset = list[Category]
-
-RED = Category(
-    category_name="Red",
-    category_items=[
-        "Apple",
-        "Fire truck",
-        "Tomato",
-        "Stop sign",
-        "Rose",
-        "Strawberry",
-        "Heart",
-        "Chili pepper",
-        "Cardinal bird",
-        "Lipstick",
-    ],
-)
-BLUE = Category(
-    category_name="Blue",
-    category_items=[
-        "Sky",
-        "Ocean",
-        "Blueberry",
-        "Jeans",
-        "Hydrangea",
-        "Whale",
-        "Bluebird",
-        "Sapphire",
-        "Robin's egg",
-        "Intel's logo",
-    ],
-)
-YELLOW = Category(
-    category_name="Yellow",
-    category_items=[
-        "Sun",
-        "Banana",
-        "Lemon",
-        "School bus",
-        "Sunflower",
-        "Rubber duck",
-        "Canary",
-        "Corn",
-        "Daffodil",
-        "Taxi cab",
-    ],
-)
-GREEN = Category(
-    category_name="Green",
-    category_items=[
-        "Grass",
-        "Trees",
-        "Lime",
-        "Broccoli",
-        "Frog",
-        "Dollar bills",
-        "Emerald",
-        "Shamrock",
-        "Cucumber",
-        "Avocado",
-    ],
-)
-ORAGNE = Category(
-    category_name="Orange",
-    category_items=[
-        "Orange (fruit)",
-        "Pumpkin",
-        "Carrot",
-        "Tiger",
-        "Traffic cone",
-        "Goldfish",
-        "Basketball",
-        "Marigold",
-        "Clownfish",
-        "Monarch butterfly",
-    ],
-)
-PURPLE = Category(
-    category_name="Purple",
-    category_items=[
-        "Grape",
-        "Lavender",
-        "Plum",
-        "Eggplant",
-        "Orchid",
-        "Amethyst",
-        "Jelly",
-        "Red Cabbage",
-        "Purple finch",
-        "Violet flower",
-    ],
-)
-BROWN = Category(
-    category_name="Brown",
-    category_items=[
-        "Chocolate",
-        "Bear",
-        "Tree trunk",
-        "Leather jacket",
-        "Coffee",
-        "Acorn",
-        "Potato",
-        "Owl",
-        "Walnut",
-        "Deer",
-    ],
-)
-BLACK = Category(
-    category_name="Black",
-    category_items=[
-        "Coal",
-        "Crow",
-        "Tire",
-        "Panther",
-        "Short piano keys",
-        "Hockey puck",
-        "Night sky",
-        "Black cat",
-        "Batman",
-    ],
-)
-WHITE = Category(
-    category_name="White",
-    category_items=[
-        "Snow",
-        "Cloud",
-        "Swan",
-        "Rice",
-        "Tooth",
-        "Wedding dress",
-        "Sugar",
-        "Salt",
-        "Cotton",
-        "Dove",
-    ],
-)
-GRAY = Category(
-    category_name="Gray",
-    category_items=[
-        "Elephant",
-        "Mouse",
-        "Concrete",
-        "Pebble",
-        "Shark",
-        "Gray goo",
-        "Battleship",
-        "Wolf",
-        "Koala",
-        "Rhino",
-    ],
-)
-COLORS_DATASET = Dataset(
-    [
-        RED,
-        BLUE,
-        YELLOW,
-        GREEN,
-        ORAGNE,
-        PURPLE,
-        BROWN,
-        BLACK,
-        WHITE,
-        GRAY,
-    ]
-)
+    def __getitem__(self, index: int) -> torch.Tensor:
+        # Sample randomly, every time 2 samples from the same category and another 2 from different category
+        selected_two_pair_first_category = random.randint(
+            0, len(self.colors_dataset) - 1
+        )
+        selected_different_category = random.randint(0, len(self.colors_dataset) - 2)
+        if selected_different_category >= selected_two_pair_first_category:
+            selected_different_category += 1
+        sampled_1_first_category = random.randint(
+            0,
+            len(self.colors_dataset[selected_two_pair_first_category].category_items)
+            - 1,
+        )
+        sampled_2_first_category = random.randint(
+            0,
+            len(self.colors_dataset[selected_two_pair_first_category].category_items)
+            - 2,
+        )
+        if sampled_2_first_category >= sampled_1_first_category:
+            sampled_2_first_category += 1
+        sampled_different_category = random.randint(
+            0,
+            len(self.colors_dataset[selected_different_category].category_items) - 1,
+        )
+        sampled_1_embeddings = self.embeddings_cache.get(
+            self.colors_dataset[selected_two_pair_first_category].category_items[
+                sampled_1_first_category
+            ]
+        )
+        sampled_2_embeddings = self.embeddings_cache.get(
+            self.colors_dataset[selected_two_pair_first_category].category_items[
+                sampled_2_first_category
+            ]
+        )
+        sampled_3_embeddings = self.embeddings_cache.get(
+            self.colors_dataset[selected_different_category].category_items[
+                sampled_different_category
+            ]
+        )
+        return torch.Tensor(
+            [
+                sampled_1_embeddings,
+                sampled_2_embeddings,
+                sampled_3_embeddings,
+            ]
+        )
